@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(create_a_window C CXX)
+project(3_hello_triangle C CXX)
 
 set(CMAKE_CXX_STANDARD 14)
 

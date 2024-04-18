@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(create_a_window)
+project(2-hello-window-clear)
 
 set(CMAKE_CXX_STANDARD 14)
 

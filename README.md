@@ -64,3 +64,48 @@ int main() {
 }
 ```
 
+### add order
+
+* background
+
+  > It is required that `glad.h` must be included before `glfw.h`.
+  >
+  > Now I want to call `glClear()` function, it will be different over the including order.
+
+*  `glad.h` is included before `glfw.h`
+
+  ```c++
+  //glad.h
+  #ifdef __gl_h_
+  #error OpenGL header already included, remove this include, glad already provides it
+  #endif
+  #define __gl_h_ // __gl_h_ is defined by glad.h
+  
+  GLAPI PFNGLCLEARPROC glad_glClear;
+  #define glClear glad_glClear // this is function pointer of glClear
+  
+  //glad.c
+  #include <glad/glad.h>
+  static void load_GL_VERSION_1_0(GLADloadproc load) {
+    glad_glClear = (PFNGLCLEARPROC)load("glClear"); // glClear is loaded dynamicly
+  }
+  ```
+
+* only include `glfw.h`
+
+  ```c++
+  //glfw.h
+  #if !defined(__gl_h_)
+  	#if defined(__APPLE__)
+    #include <OpenGL/gl.h> // here <OpenGL/gl.h> is included
+  	#endif
+  #endif
+  
+  //gl.h
+  #ifndef __gl_h_
+  #define __gl_h_ // __gl_h_ is defined by glad.h
+  
+  extern void glClear (GLbitfield mask) OPENGL_DEPRECATED(10.0, 10.14);
+  ```
+
+  

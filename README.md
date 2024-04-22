@@ -1,6 +1,8 @@
 # study-opengl
 a repo for storing the code when studying opengl.
 
+***
+
 ## glfw
 
 ### relation with opengl
@@ -9,6 +11,8 @@ a repo for storing the code when studying opengl.
 2. glfw is a helper library that sits on top of OpenGL. It provides a simpler API for handling the tasks OpenGL doesn't directly address.
 3. GLFW provides the foundation and utilities for building your OpenGL application. It takes care of the lower-level details that differ between operating systems, allowing you to focus on the core graphics logic using OpenGL.
 4. glfw target does not depend on OpenGL, as GLFW loads any OpenGL, OpenGL ES or Vulkan libraries it needs at runtime.
+
+***
 
 ## glad
 
@@ -108,4 +112,36 @@ int main() {
   extern void glClear (GLbitfield mask) OPENGL_DEPRECATED(10.0, 10.14);
   ```
 
-  
+***
+
+## skia
+
+### ref
+
+1. [深入理解Flutter的图形图像绘制原理——图形库skia剖析](https://juejin.cn/post/6914188284126035981)
+
+### what
+
+* It is an open source 2D graphics library which provides common APIs that work across a variety of hardware and software platforms. It serves as the graphics engine for Google Chrome and ChromeOS, Android, Flutter, and many other products.
+
+### features
+
+1. Skia offers multiple backends for rendering, and one of them is OpenGL. This allows Skia to leverage the power of OpenGL for hardware-accelerated rendering on platforms where it's available.
+
+2. Skia also has backends like Vulkan, Metal and its own software renderer.
+
+3. hierarchy
+
+   ```bash
+   # from top to down
+   mobile applications
+   Android app, Flutter app, iOS app
+   Skia, CoreAnimation
+   Vulkan, OpenGL, Metal
+   ARM cpu, Adreno gpu, ARM Mali gpu, iPhone gpu, iPhone ARM cpu
+
+### android
+
+* Skia is an external dependency of AOSP .
+
+***

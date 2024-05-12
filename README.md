@@ -1,5 +1,5 @@
-# study-opengl
-a repo for storing the code when studying opengl.
+# render-code
+a repo for storing the code when studying rendering.
 
 ***
 
@@ -145,3 +145,13 @@ int main() {
 * Skia is an external dependency of AOSP .
 
 ***
+
+## ffmpeg
+
+### reference
+
+* [offical website](https://ffmpeg.org/)
+* [ffmpeg github](https://github.com/FFmpeg/FFmpeg)
+
+***
+

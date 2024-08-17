@@ -3,8 +3,6 @@
 #include "iostream"
 #include <chrono>
 
-
-
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 long getUnixTimeStamp();
@@ -61,6 +59,8 @@ int main()
         return -1;
     }
 
+    // print gl version
+    std::cout << "opengl version  = " << glGetString(GL_VERSION) << std::endl;
 
     // build and compile our shader program
     // ------------------------------------
@@ -137,7 +137,7 @@ int main()
     // -----------
     while (!glfwWindowShouldClose(window))
     {
-        std::cout << "while loop call times = " << times++  << "unix time = " << getUnixTimeStamp() << std::endl;
+        std::cout << "while loop call times = " << times++  << ", unix time = " << getUnixTimeStamp() << std::endl;
 
         // input
         // -----

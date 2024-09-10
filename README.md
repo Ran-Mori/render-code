@@ -155,3 +155,15 @@ int main() {
 
 ***
 
+## shader
+
+### vertex shaders
+
+1. It is uesed to perform geometric transformations. Specifically, they calculate how vertices (points that define 3D models) are transformed from the object's local coordinate space into clip space (which is later projected onto the 2D screen). This involves operations like:
+   - **Model transformation**: Converting local coordinates to world coordinates.
+   - **View transformation**: Adjusting for the camera’s perspective.
+   - **Projection transformation**: Converting 3D coordinates into 2D screen space (clip space).
+
+### fragment Shader
+
+1. It takes the interpolated output from the vertex shader (such as colors, texture coordinates, and normals) and applies operations like texturing, lighting, and shading to determine the final color of each pixel on the screen.

@@ -1,15 +1,18 @@
 cmake_minimum_required(VERSION 3.25)
-project(2-hello-window-clear)
+project(hello_window_clear LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -v")
+find_package(glfw3 3.3 REQUIRED)
+find_package(OpenGL REQUIRED)
 
 add_executable(2-hello-window-clear main.cpp)
 
-target_include_directories(2-hello-window-clear PUBLIC /opt/homebrew/Cellar/glfw/3.4/include)
+target_link_libraries(2-hello-window-clear PRIVATE glfw OpenGL::GL)
 
-target_link_libraries(2-hello-window-clear
-        /opt/homebrew/Cellar/glfw/3.4/lib/libglfw.3.dylib
-        /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/OpenGL.framework
-)
+if(APPLE)
+    target_compile_definitions(2-hello-window-clear PRIVATE GL_SILENCE_DEPRECATION)
+endif()

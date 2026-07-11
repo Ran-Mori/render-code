@@ -1,19 +1,18 @@
 cmake_minimum_required(VERSION 3.25)
-project(4-circle C CXX)
+project(circle LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 14)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -v")
-set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_library(glad ~/Environment/glad/src/glad.c)
-target_include_directories(glad PUBLIC ~/Environment/glad/include)
+find_package(glfw3 3.3 REQUIRED)
+find_package(OpenGL REQUIRED)
+
+set(GLAD_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/glad")
+
+add_library(glad STATIC "${GLAD_ROOT}/src/glad.c")
+target_include_directories(glad PUBLIC "${GLAD_ROOT}/include")
 
 add_executable(4-circle main.cpp)
-target_include_directories(4-circle PUBLIC /opt/homebrew/Cellar/glfw/3.4/include)
-
-target_link_libraries(4-circle
-        glad
-        /opt/homebrew/Cellar/glfw/3.4/lib/libglfw.3.dylib
-)
+target_link_libraries(4-circle PRIVATE glad glfw OpenGL::GL)

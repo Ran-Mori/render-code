@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug opengl-state-machine",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/opengl-state-machine",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "CMake: build Debug"
+        }
+    ]
+}

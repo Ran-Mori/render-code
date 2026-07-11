@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="通过交互式状态检查器理解 OpenGL 为什么被称为状态机。">
+  <title>OpenGL 状态机交互学习页</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07111f;
+      --bg-2: #0a1728;
+      --panel: rgba(15, 31, 51, .82);
+      --panel-solid: #10223a;
+      --line: #294563;
+      --text: #edf4ff;
+      --muted: #9aadc5;
+      --cyan: #53d8e8;
+      --blue: #6f9dff;
+      --violet: #bd8dff;
+      --amber: #f4c65b;
+      --green: #59d6a5;
+      --red: #ff7d8d;
+      --radius: 18px;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .28);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% -5%, rgba(83, 216, 232, .15), transparent 31rem),
+        radial-gradient(circle at 90% 8%, rgba(189, 141, 255, .12), transparent 30rem),
+        var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.7;
+    }
+    button { font: inherit; }
+    a { color: var(--cyan); }
+    code {
+      padding: .12rem .38rem;
+      border: 1px solid rgba(111, 157, 255, .24);
+      border-radius: 6px;
+      color: #cfe0ff;
+      background: rgba(111, 157, 255, .09);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: .9em;
+    }
+    pre {
+      margin: 0;
+      overflow-x: auto;
+      padding: 1rem 1.1rem;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      color: #cee0f5;
+      background: #071321;
+      line-height: 1.55;
+    }
+    pre code { padding: 0; border: 0; color: inherit; background: none; }
+
+    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      border-bottom: 1px solid rgba(41, 69, 99, .68);
+      background: rgba(7, 17, 31, .86);
+      backdrop-filter: blur(18px);
+    }
+    .topbar-inner { display: flex; align-items: center; justify-content: space-between; min-height: 62px; gap: 1rem; }
+    .brand { font-weight: 750; letter-spacing: .015em; }
+    .brand span { color: var(--cyan); }
+    nav { display: flex; flex-wrap: wrap; gap: .3rem; }
+    nav a { padding: .32rem .62rem; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: .88rem; }
+    nav a:hover { color: var(--text); background: rgba(255,255,255,.05); }
+
+    .hero { display: grid; grid-template-columns: 1.05fr .95fr; align-items: center; min-height: 650px; gap: 3rem; padding: 5rem 0 4rem; }
+    .eyebrow { display: flex; align-items: center; gap: .55rem; color: var(--cyan); font-size: .8rem; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    .eyebrow::before { content: ""; width: 28px; height: 1px; background: var(--cyan); }
+    h1, h2, h3 { line-height: 1.2; }
+    h1 { margin: 1rem 0 1.25rem; font-size: clamp(2.7rem, 6.7vw, 5.8rem); letter-spacing: -.06em; }
+    h1 em { color: var(--cyan); font-style: normal; }
+    .lead { max-width: 720px; margin: 0 0 2rem; color: var(--muted); font-size: clamp(1rem, 2vw, 1.18rem); }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 43px;
+      padding: .68rem .95rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--text);
+      background: rgba(255,255,255,.035);
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform .17s, border-color .17s, background .17s;
+    }
+    .btn:hover { transform: translateY(-1px); border-color: #4b7098; background: rgba(255,255,255,.065); }
+    .btn.primary { border-color: transparent; color: #041117; background: var(--cyan); font-weight: 750; }
+    .btn.warn { border-color: rgba(244,198,91,.45); color: var(--amber); }
+    .btn:disabled { cursor: not-allowed; opacity: .42; transform: none; }
+
+    .context-visual {
+      position: relative;
+      min-height: 470px;
+      padding: 1.3rem;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: linear-gradient(145deg, rgba(16,34,58,.94), rgba(7,20,35,.92));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .context-visual::before { content: ""; position: absolute; inset: 0; opacity: .5; background-image: linear-gradient(rgba(83,216,232,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(83,216,232,.055) 1px, transparent 1px); background-size: 28px 28px; }
+    .context-label { position: relative; z-index: 1; display: flex; justify-content: space-between; padding-bottom: 1rem; border-bottom: 1px solid var(--line); }
+    .context-label span:last-child { color: var(--green); }
+    .registers { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; margin-top: 1rem; }
+    .register { padding: .85rem; border: 1px solid rgba(41,69,99,.8); border-radius: 12px; background: rgba(7,17,31,.78); }
+    .register small { display: block; color: var(--muted); }
+    .register strong { display: block; margin-top: .25rem; color: var(--cyan); font-family: monospace; font-size: .92rem; }
+    .call-arrow { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .8rem; margin-top: 1.2rem; }
+    .call-box, .result-box { padding: .9rem; border-radius: 12px; text-align: center; }
+    .call-box { border: 1px solid rgba(111,157,255,.48); background: rgba(111,157,255,.08); }
+    .result-box { border: 1px solid rgba(89,214,165,.45); background: rgba(89,214,165,.07); }
+    .arrow-symbol { color: var(--violet); font-size: 1.6rem; }
+
+    section { padding: 5rem 0; scroll-margin-top: 70px; }
+    .section-head { display: grid; grid-template-columns: .72fr 1.28fr; gap: 2rem; margin-bottom: 2.4rem; }
+    .kicker { color: var(--cyan); font-size: .78rem; font-weight: 750; letter-spacing: .13em; text-transform: uppercase; }
+    h2 { margin: .48rem 0 0; font-size: clamp(2rem, 4vw, 3.3rem); letter-spacing: -.04em; }
+    .section-intro { align-self: end; margin: 0; color: var(--muted); font-size: 1.04rem; }
+
+    .definition { display: grid; grid-template-columns: .85fr 1.15fr; gap: 1.2rem; }
+    .big-quote { padding: 1.5rem; border-left: 3px solid var(--cyan); color: #d9e8f8; background: rgba(83,216,232,.045); font-size: clamp(1.15rem, 2.5vw, 1.55rem); }
+    .rules { display: grid; gap: .8rem; }
+    .rule { display: grid; grid-template-columns: 42px 1fr; gap: .85rem; padding: 1rem 0; border-top: 1px solid var(--line); }
+    .rule-number { color: var(--cyan); font-family: monospace; font-size: 1.1rem; }
+    .rule p { margin: .25rem 0 0; color: var(--muted); }
+
+    .lab { border: 1px solid var(--line); border-radius: 24px; background: rgba(8,20,35,.8); box-shadow: var(--shadow); overflow: hidden; }
+    .lab-bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 1.2rem; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.025); }
+    .lab-bar strong { color: var(--cyan); }
+    .lab-grid { display: grid; grid-template-columns: .78fr 1.22fr; min-height: 570px; }
+    .commands { padding: 1.2rem; border-right: 1px solid var(--line); }
+    .commands h3, .state-view h3 { margin: 0 0 .35rem; }
+    .commands > p, .state-view > p { margin: 0 0 1rem; color: var(--muted); }
+    .command-list { display: grid; gap: .55rem; }
+    .command {
+      width: 100%;
+      padding: .7rem .75rem;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: #d9e8f8;
+      background: rgba(255,255,255,.025);
+      cursor: pointer;
+      text-align: left;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: .82rem;
+    }
+    .command:hover { border-color: var(--cyan); background: rgba(83,216,232,.055); }
+    .command.is-last { border-color: var(--cyan); box-shadow: inset 3px 0 var(--cyan); }
+    .command.draw { color: var(--green); border-color: rgba(89,214,165,.42); }
+    .state-view { padding: 1.2rem; }
+    .state-layout { display: grid; grid-template-columns: 1fr .82fr; gap: 1rem; }
+    .state-table { display: grid; gap: .3rem; }
+    .state-row { display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; gap: .7rem; min-height: 42px; padding: .45rem .65rem; border-bottom: 1px solid rgba(41,69,99,.62); }
+    .state-row span:first-child { color: var(--muted); }
+    .state-value { justify-self: end; color: #dbe9f8; font-family: monospace; font-size: .88rem; text-align: right; transition: color .2s; }
+    .state-value.changed { color: var(--amber); }
+    .screen { position: relative; display: grid; place-items: center; min-height: 300px; border: 1px solid var(--line); border-radius: 15px; background: #07111e; overflow: hidden; }
+    .screen::before { content: "Framebuffer"; position: absolute; top: .6rem; left: .7rem; color: var(--muted); font-family: monospace; font-size: .72rem; }
+    .shape { width: 55%; aspect-ratio: 1; clip-path: polygon(50% 5%, 95% 90%, 5% 90%); background: linear-gradient(135deg, var(--blue), var(--violet)); opacity: 0; transform: scale(.85); transition: opacity .25s, transform .25s, filter .25s; }
+    .shape.visible { opacity: 1; transform: scale(1); }
+    .shape.textured { background: repeating-linear-gradient(45deg, var(--amber) 0 16px, #8d5d22 16px 32px); }
+    .shape.blended { opacity: .58; }
+    .draw-message { min-height: 3.3em; margin-top: .7rem; color: var(--muted); font-size: .88rem; }
+    .history { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--line); }
+    .history-line { color: var(--muted); font-family: monospace; font-size: .8rem; }
+    .lab-actions { display: flex; justify-content: space-between; gap: .7rem; padding: 1rem 1.2rem; border-top: 1px solid var(--line); }
+
+    .categories { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .category { position: relative; padding: 1.25rem; border-top: 2px solid var(--cyan); background: rgba(255,255,255,.025); }
+    .category:nth-child(2) { border-color: var(--violet); }
+    .category:nth-child(3) { border-color: var(--amber); }
+    .category h3 { margin: 0 0 .55rem; }
+    .category ul { margin: 0; padding-left: 1.2rem; color: var(--muted); }
+
+    .capture { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 1rem; }
+    .capture-panel { padding: 1.2rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+    .capture-panel h3 { margin-top: 0; }
+    .capture-panel p { color: var(--muted); }
+    .capture-arrow { display: grid; place-items: center; color: var(--violet); font-size: 2rem; }
+    .capture-list { display: grid; gap: .5rem; }
+    .capture-item { display: flex; justify-content: space-between; gap: 1rem; padding: .48rem 0; border-bottom: 1px solid rgba(41,69,99,.6); }
+    .capture-item span:first-child { color: var(--muted); }
+    .capture-item strong { color: var(--cyan); font-family: monospace; font-size: .88rem; }
+
+    .leak-lab { display: grid; grid-template-columns: .72fr 1.28fr; border: 1px solid var(--line); border-radius: 22px; background: var(--panel); overflow: hidden; }
+    .leak-controls { padding: 1.3rem; border-right: 1px solid var(--line); }
+    .leak-controls h3 { margin-top: 0; }
+    .leak-controls p { color: var(--muted); }
+    .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1rem 0; }
+    .switch { position: relative; width: 46px; height: 26px; flex: 0 0 auto; }
+    .switch input { position: absolute; opacity: 0; }
+    .switch span { position: absolute; inset: 0; border-radius: 999px; background: #304861; cursor: pointer; transition: .2s; }
+    .switch span::after { content: ""; position: absolute; top: 4px; left: 4px; width: 18px; height: 18px; border-radius: 50%; background: white; transition: .2s; }
+    .switch input:checked + span { background: var(--cyan); }
+    .switch input:checked + span::after { transform: translateX(20px); background: #061117; }
+    .leak-output { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1.3rem; }
+    .object-preview { display: grid; place-items: center; min-height: 260px; border: 1px solid var(--line); border-radius: 14px; background: #081522; }
+    .preview-inner { width: 55%; aspect-ratio: 1; background: var(--blue); }
+    .preview-inner.circle { border-radius: 50%; }
+    .preview-inner.transparent { opacity: .42; }
+    .object-preview small { align-self: end; margin-bottom: .8rem; color: var(--muted); }
+    .leak-status { grid-column: 1 / -1; padding: .8rem 1rem; border-left: 3px solid var(--amber); color: #d6e3f2; background: rgba(244,198,91,.055); }
+
+    .sequence { display: grid; gap: .65rem; }
+    .sequence-row { display: grid; grid-template-columns: 42px 1fr 1fr; align-items: center; gap: .8rem; padding: .7rem 0; border-bottom: 1px solid var(--line); }
+    .sequence-row span:first-child { color: var(--cyan); font-family: monospace; }
+    .sequence-row code { justify-self: start; }
+    .sequence-row p { margin: 0; color: var(--muted); }
+
+    .quiz { max-width: 900px; margin: 0 auto; }
+    .question { margin-bottom: 1rem; padding: 1.1rem; border: 1px solid var(--line); border-radius: 15px; background: var(--panel); }
+    .question h3 { margin: 0 0 .8rem; font-size: 1rem; }
+    .answers { display: grid; gap: .5rem; }
+    .answer { width: 100%; padding: .67rem .75rem; border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: rgba(255,255,255,.025); cursor: pointer; text-align: left; }
+    .answer:hover { border-color: #53789f; }
+    .answer.correct { border-color: var(--green); background: rgba(89,214,165,.09); }
+    .answer.wrong { border-color: var(--red); background: rgba(255,125,141,.08); }
+    .feedback { min-height: 1.7em; margin: .6rem 0 0; color: var(--muted); }
+
+    .final-model { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .final-item { padding: 1rem 0; border-top: 1px solid var(--line); }
+    .final-item strong { display: block; margin-bottom: .35rem; color: var(--cyan); }
+    .final-item span { color: var(--muted); }
+    footer { padding: 2.8rem 0 4rem; border-top: 1px solid var(--line); color: var(--muted); }
+
+    @media (max-width: 940px) {
+      nav { display: none; }
+      .hero, .section-head, .definition, .lab-grid, .leak-lab { grid-template-columns: 1fr; }
+      .hero { min-height: auto; padding-top: 3.5rem; }
+      .commands, .leak-controls { border-right: 0; border-bottom: 1px solid var(--line); }
+      .categories { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .shell { width: min(100% - 22px, 1180px); }
+      section { padding: 3.7rem 0; }
+      .context-visual { min-height: 520px; }
+      .registers, .state-layout, .leak-output, .final-model { grid-template-columns: 1fr; }
+      .capture { grid-template-columns: 1fr; }
+      .capture-arrow { transform: rotate(90deg); }
+      .sequence-row { grid-template-columns: 34px 1fr; }
+      .sequence-row p { grid-column: 2; }
+      .lab-bar { align-items: flex-start; flex-direction: column; }
+      .lab-actions { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <div class="brand">OpenGL <span>State Lab</span></div>
+      <nav aria-label="页面导航">
+        <a href="#definition">核心定义</a>
+        <a href="#inspector">状态实验</a>
+        <a href="#capture">对象绑定</a>
+        <a href="#leak">状态泄漏</a>
+        <a href="#quiz">自测</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero shell">
+      <div>
+        <div class="eyebrow">Persistent Context · Command Driven</div>
+        <h1>OpenGL 为什么是一个<em>状态机</em>？</h1>
+        <p class="lead">因为大多数 OpenGL 调用不是把全部参数一次性交给绘制函数，而是在持续修改“当前 OpenGL Context”中的状态。后续命令读取这些当前状态，决定操作哪个对象、怎样解释数据以及怎样产生像素。</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#inspector">运行状态实验</a>
+          <a class="btn" href="#definition">先看一句话解释</a>
+        </div>
+      </div>
+      <div class="context-visual" aria-label="OpenGL Context 内部保存当前绑定和渲染状态的示意图">
+        <div class="context-label"><strong>OpenGL Context</strong><span>● current</span></div>
+        <div class="registers">
+          <div class="register"><small>Current Program</small><strong>ShaderProgram 3</strong></div>
+          <div class="register"><small>Current VAO</small><strong>VAO 1</strong></div>
+          <div class="register"><small>Texture Unit 0</small><strong>Texture 8</strong></div>
+          <div class="register"><small>Framebuffer</small><strong>Default FBO</strong></div>
+          <div class="register"><small>Blend</small><strong>Disabled</strong></div>
+          <div class="register"><small>Viewport</small><strong>800 × 600</strong></div>
+        </div>
+        <div class="call-arrow">
+          <div class="call-box"><code>glDrawElements(...)</code></div>
+          <div class="arrow-symbol">→</div>
+          <div class="result-box">读取当前状态<br>执行绘制</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="definition">
+      <div class="shell">
+        <div class="section-head">
+          <div><div class="kicker">01 · Definition</div><h2>“状态机”到底是什么意思</h2></div>
+          <p class="section-intro">它不是说 OpenGL 内部只有一个简单状态，也不是某种设计模式名称。它强调的是：OpenGL Context 保存大量当前值，命令会修改或消费这些值。</p>
+        </div>
+        <div class="definition">
+          <div class="big-quote">OpenGL 的行为不仅取决于你现在调用了哪个函数，还取决于在此之前留下了什么状态。</div>
+          <div class="rules">
+            <div class="rule"><div class="rule-number">01</div><div><strong>状态会持续存在</strong><p><code>glBindTexture</code> 绑定后不会在下一行自动失效，直到绑定另一张纹理或改变 Context。</p></div></div>
+            <div class="rule"><div class="rule-number">02</div><div><strong>许多命令操作“当前对象”</strong><p><code>glBufferData</code> 没有 VBO 参数，它修改当前绑定到目标上的 Buffer Object。</p></div></div>
+            <div class="rule"><div class="rule-number">03</div><div><strong>绘制命令消费一组状态</strong><p><code>glDrawElements</code> 会同时依赖当前 Program、VAO、EBO、纹理、Framebuffer 和各种渲染开关。</p></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="inspector">
+      <div class="shell">
+        <div class="section-head">
+          <div><div class="kicker">02 · State Inspector</div><h2>亲手修改 Context</h2></div>
+          <p class="section-intro">按顺序点击左侧命令。每一次调用只改变一小部分状态；绘制命令最后把这些分散设置组合起来。</p>
+        </div>
+        <div class="lab">
+          <div class="lab-bar"><span>当前实验：<strong id="labTitle">尚未执行命令</strong></span><span id="labProgress">0 / 9</span></div>
+          <div class="lab-grid">
+            <div class="commands">
+              <h3>OpenGL 命令</h3>
+              <p>可以依次执行，也可以故意跳过某一步观察结果。</p>
+              <div class="command-list" id="commandList">
+                <button class="command" type="button" data-command="clear">glClearColor(0.08, 0.16, 0.24, 1.0)</button>
+                <button class="command" type="button" data-command="program">glUseProgram(program3)</button>
+                <button class="command" type="button" data-command="vao">glBindVertexArray(vao1)</button>
+                <button class="command" type="button" data-command="unit">glActiveTexture(GL_TEXTURE0)</button>
+                <button class="command" type="button" data-command="texture">glBindTexture(GL_TEXTURE_2D, texture8)</button>
+                <button class="command" type="button" data-command="viewport">glViewport(0, 0, 800, 600)</button>
+                <button class="command" type="button" data-command="blend">glEnable(GL_BLEND)</button>
+                <button class="command" type="button" data-command="blendFunc">glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)</button>
+                <button class="command draw" type="button" data-command="draw">glDrawElements(GL_TRIANGLES, 6, ...)</button>
+              </div>
+            </div>
+            <div class="state-view">
+              <h3>当前 Context 状态</h3>
+              <p>黄色值表示刚被最后一条命令改变。</p>
+              <div class="state-layout">
+                <div>
+                  <div class="state-table">
+                    <div class="state-row"><span>Clear Color</span><output class="state-value" id="stateClear">(0, 0, 0, 0)</output></div>
+                    <div class="state-row"><span>Current Program</span><output class="state-value" id="stateProgram">0</output></div>
+                    <div class="state-row"><span>Current VAO</span><output class="state-value" id="stateVao">0</output></div>
+                    <div class="state-row"><span>Active Texture Unit</span><output class="state-value" id="stateUnit">GL_TEXTURE0</output></div>
+                    <div class="state-row"><span>Unit 0 · Texture 2D</span><output class="state-value" id="stateTexture">0</output></div>
+                    <div class="state-row"><span>Viewport</span><output class="state-value" id="stateViewport">未设置</output></div>
+                    <div class="state-row"><span>Blend</span><output class="state-value" id="stateBlend">Disabled</output></div>
+                    <div class="state-row"><span>Blend Function</span><output class="state-value" id="stateBlendFunc">ONE, ZERO</output></div>
+                  </div>
+                  <div class="history"><div class="history-line" id="historyLine">等待命令...</div></div>
+                </div>
+                <div>
+                  <div class="screen"><div class="shape" id="drawShape"></div></div>
+                  <div class="draw-message" id="drawMessage">Framebuffer 还没有收到绘制结果。</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="lab-actions"><button class="btn" id="resetLab" type="button">重置所有状态</button><button class="btn primary" id="runAll" type="button">按正确顺序执行全部</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="shell">
+        <div class="section-head">
+          <div><div class="kicker">03 · State Families</div><h2>Context 里保存了什么</h2></div>
+          <p class="section-intro">OpenGL 状态很多，但学习阶段可以先分为三组：绑定到当前槽位的对象、固定功能渲染设置，以及绘制输出目标。</p>
+        </div>
+        <div class="categories">
+          <article class="category"><h3>对象与绑定</h3><ul><li>Current Shader Program</li><li>Current VAO</li><li>Buffer bindings</li><li>每个 Texture Unit 的纹理绑定</li><li>Framebuffer binding</li></ul></article>
+          <article class="category"><h3>渲染行为</h3><ul><li>Viewport 与 Scissor</li><li>Depth Test 与 Depth Function</li><li>Blend 与 Blend Function</li><li>Cull Face 与 Front Face</li><li>Clear Color / Depth / Stencil</li></ul></article>
+          <article class="category"><h3>对象内部状态</h3><ul><li>VAO 的顶点属性与 EBO</li><li>Texture 的过滤和环绕方式</li><li>Framebuffer 的附件</li><li>Program 的 uniform 值</li><li>Buffer 的数据存储</li></ul></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="capture">
+      <div class="shell">
+        <div class="section-head">
+          <div><div class="kicker">04 · Captured State</div><h2>VAO 为什么能“记住”VBO</h2></div>
+          <p class="section-intro">状态机最容易混淆的地方，是有些调用只修改全局当前绑定，有些调用还会把当时的绑定关系记录到另一个对象内部。</p>
+        </div>
+        <div class="capture">
+          <div class="capture-panel">
+            <h3>调用发生时</h3>
+            <pre><code>glBindVertexArray(vao1);
+glBindBuffer(GL_ARRAY_BUFFER, vbo7);
+
+glVertexAttribPointer(
+    0, 3, GL_FLOAT, GL_FALSE,
+    8 * sizeof(float), (void*)0
+);</code></pre>
+            <p><code>glVertexAttribPointer</code> 会查看当前绑定的 VAO 和当前 `GL_ARRAY_BUFFER`，然后把属性格式以及 VBO 关联记录到 VAO。</p>
+          </div>
+          <div class="capture-arrow" aria-hidden="true">→</div>
+          <div class="capture-panel">
+            <h3>VAO 1 内部记录</h3>
+            <div class="capture-list">
+              <div class="capture-item"><span>Attribute 0 Buffer</span><strong>VBO 7</strong></div>
+              <div class="capture-item"><span>Components</span><strong>3 × float</strong></div>
+              <div class="capture-item"><span>Stride</span><strong>8 × float</strong></div>
+              <div class="capture-item"><span>Offset</span><strong>0 bytes</strong></div>
+              <div class="capture-item"><span>Element Buffer</span><strong>EBO 9</strong></div>
+            </div>
+            <p>之后即使 `GL_ARRAY_BUFFER` 绑定改变，重新绑定 VAO 1 时，attribute 0 仍知道从 VBO 7 读取。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="leak">
+      <div class="shell">
+        <div class="section-head">
+          <div><div class="kicker">05 · State Leakage</div><h2>忘记恢复状态会怎样</h2></div>
+          <p class="section-intro">状态不会因为一次绘制结束而恢复默认值。对象 A 开启的混合会继续影响对象 B，这种跨绘制的意外影响通常称为状态泄漏。</p>
+        </div>
+        <div class="leak-lab">
+          <div class="leak-controls">
+            <h3>绘制对象 A 后</h3>
+            <p>对象 A 是半透明 UI，因此开启 Blend。接下来绘制本应不透明的对象 B。</p>
+            <div class="switch-row"><span>A 开启 GL_BLEND</span><label class="switch"><input id="objectABlend" type="checkbox" checked aria-label="对象 A 开启混合"><span></span></label></div>
+            <div class="switch-row"><span>B 绘制前主动关闭 Blend</span><label class="switch"><input id="objectBReset" type="checkbox" aria-label="对象 B 绘制前关闭混合"><span></span></label></div>
+            <button class="btn primary" id="drawObjects" type="button">绘制 A，然后绘制 B</button>
+          </div>
+          <div class="leak-output">
+            <div class="object-preview"><div class="preview-inner circle transparent" id="previewA"></div><small>对象 A · 半透明</small></div>
+            <div class="object-preview"><div class="preview-inner" id="previewB"></div><small>对象 B · 应当不透明</small></div>
+            <div class="leak-status" id="leakStatus">尚未绘制。尝试保持默认开关，然后观察 B 是否继承 A 留下的 Blend 状态。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="shell">
+        <div class="section-head">
+          <div><div class="kicker">06 · Your Projects</div><h2>回到当前代码看状态变化</h2></div>
+          <p class="section-intro">`5-texture/main.cpp` 中的初始化部分是在构建状态；渲染循环则是在为每次 Draw Call 选择正确状态并消费它们。</p>
+        </div>
+        <div class="sequence">
+          <div class="sequence-row"><span>01</span><code>glBindVertexArray(VAO)</code><p>把 VAO 设为当前对象，随后属性配置写入它。</p></div>
+          <div class="sequence-row"><span>02</span><code>glBindBuffer(GL_ARRAY_BUFFER, VBO)</code><p>把 VBO 放入当前 Buffer 绑定槽位。</p></div>
+          <div class="sequence-row"><span>03</span><code>glVertexAttribPointer(...)</code><p>读取当前 VBO，并将格式与关联记录到当前 VAO。</p></div>
+          <div class="sequence-row"><span>04</span><code>glBindTexture(GL_TEXTURE_2D, texture)</code><p>把纹理绑定到当前活动 Texture Unit 的 2D 目标。</p></div>
+          <div class="sequence-row"><span>05</span><code>ourShader.use()</code><p>用 `glUseProgram` 改变 Current Program。</p></div>
+          <div class="sequence-row"><span>06</span><code>glDrawElements(...)</code><p>消费当前 Program、VAO、EBO、纹理、Framebuffer 和渲染开关。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <div class="shell quiz">
+        <div class="section-head">
+          <div><div class="kicker">07 · Quick Check</div><h2>预测状态，而不是背 API</h2></div>
+          <p class="section-intro">如果你能预测下面三段调用的结果，就已经真正理解了“OpenGL 是状态机”。</p>
+        </div>
+        <article class="question" data-correct="1">
+          <h3>1. 绑定 VBO 7 后调用 `glBufferData(GL_ARRAY_BUFFER, ...)`，数据会上传到哪里？</h3>
+          <div class="answers"><button class="answer" type="button">所有已创建的 VBO</button><button class="answer" type="button">当前绑定到 GL_ARRAY_BUFFER 的 VBO 7</button><button class="answer" type="button">当前 VAO 内部</button></div>
+          <p class="feedback"></p>
+        </article>
+        <article class="question" data-correct="2">
+          <h3>2. 对象 A 开启 Blend 后直接绘制对象 B，期间没有调用 `glDisable(GL_BLEND)`，B 使用什么状态？</h3>
+          <div class="answers"><button class="answer" type="button">自动恢复默认关闭</button><button class="answer" type="button">由 B 的 VAO 决定</button><button class="answer" type="button">继续使用开启的 Blend</button></div>
+          <p class="feedback"></p>
+        </article>
+        <article class="question" data-correct="0">
+          <h3>3. `glDrawElements` 为什么不需要直接传 VBO、EBO、Shader 和 Texture 参数？</h3>
+          <div class="answers"><button class="answer" type="button">因为它从当前 Context 和绑定对象中读取这些状态</button><button class="answer" type="button">因为它只能画固定三角形</button><button class="answer" type="button">因为编译器自动把变量名传给 GPU</button></div>
+          <p class="feedback"></p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="shell">
+        <div class="section-head">
+          <div><div class="kicker">08 · Final Model</div><h2>最后记住这三个动作</h2></div>
+          <p class="section-intro">以后看到任何 OpenGL API，都可以先判断它属于哪一种动作，复杂代码就会变成可追踪的状态变化。</p>
+        </div>
+        <div class="final-model">
+          <div class="final-item"><strong>Bind · 选择当前对象</strong><span>例如 `glBindBuffer`、`glBindTexture`、`glBindVertexArray`。</span></div>
+          <div class="final-item"><strong>Configure · 修改当前状态</strong><span>例如 `glBufferData`、`glTexParameteri`、`glEnable`、`glViewport`。</span></div>
+          <div class="final-item"><strong>Consume · 使用当前状态</strong><span>例如 `glDrawArrays`、`glDrawElements`、`glClear`。</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="shell">建议打开状态检查器，故意跳过 Program、VAO 或 Texture 绑定后点击 Draw，再回到 `5-texture/main.cpp` 对照每一行。</div></footer>
+
+  <script>
+    (() => {
+      const initialState = () => ({
+        clear: '(0, 0, 0, 0)', program: '0', vao: '0', unit: 'GL_TEXTURE0',
+        texture: '0', viewport: '未设置', blend: 'Disabled', blendFunc: 'ONE, ZERO'
+      });
+      let state = initialState();
+      let executed = 0;
+      const byId = id => document.getElementById(id);
+      const outputs = {
+        clear: byId('stateClear'), program: byId('stateProgram'), vao: byId('stateVao'),
+        unit: byId('stateUnit'), texture: byId('stateTexture'), viewport: byId('stateViewport'),
+        blend: byId('stateBlend'), blendFunc: byId('stateBlendFunc')
+      };
+      const labels = {
+        clear: '修改清屏颜色', program: '选择 Shader Program', vao: '绑定 VAO', unit: '选择 Texture Unit',
+        texture: '绑定二维纹理', viewport: '设置 Viewport', blend: '开启 Blend',
+        blendFunc: '设置混合因子', draw: '消费当前状态并绘制'
+      };
+
+      function markChanged(key) {
+        Object.values(outputs).forEach(el => el.classList.remove('changed'));
+        if (outputs[key]) outputs[key].classList.add('changed');
+      }
+
+      function syncState() {
+        Object.keys(outputs).forEach(key => { outputs[key].textContent = state[key]; });
+        byId('labProgress').textContent = `${executed} / 9`;
+      }
+
+      function execute(command, button) {
+        document.querySelectorAll('.command').forEach(el => el.classList.remove('is-last'));
+        button.classList.add('is-last');
+        byId('labTitle').textContent = labels[command];
+        byId('historyLine').textContent = `last call → ${button.textContent.trim()}`;
+        if (command === 'clear') { state.clear = '(0.08, 0.16, 0.24, 1.0)'; markChanged('clear'); }
+        if (command === 'program') { state.program = 'Program 3'; markChanged('program'); }
+        if (command === 'vao') { state.vao = 'VAO 1'; markChanged('vao'); }
+        if (command === 'unit') { state.unit = 'GL_TEXTURE0'; markChanged('unit'); }
+        if (command === 'texture') { state.texture = 'Texture 8'; markChanged('texture'); }
+        if (command === 'viewport') { state.viewport = '0, 0, 800, 600'; markChanged('viewport'); }
+        if (command === 'blend') { state.blend = 'Enabled'; markChanged('blend'); }
+        if (command === 'blendFunc') { state.blendFunc = 'SRC_ALPHA, 1−SRC_ALPHA'; markChanged('blendFunc'); }
+        if (command === 'draw') {
+          markChanged('');
+          const missing = [];
+          if (state.program === '0') missing.push('Shader Program');
+          if (state.vao === '0') missing.push('VAO');
+          if (state.texture === '0') missing.push('Texture');
+          if (state.viewport === '未设置') missing.push('Viewport');
+          const shape = byId('drawShape');
+          if (missing.length) {
+            shape.className = 'shape';
+            byId('drawMessage').textContent = `绘制条件不完整：缺少 ${missing.join('、')}。Draw Call 不会替你补齐状态。`;
+          } else {
+            shape.className = `shape visible textured${state.blend === 'Enabled' ? ' blended' : ''}`;
+            byId('drawMessage').textContent = state.blend === 'Enabled'
+              ? '绘制成功；因为 Blend 仍是 Enabled，结果按当前混合因子与 Framebuffer 合成。'
+              : '绘制成功；Draw Call 使用当前 Program、VAO、Texture 和 Viewport。';
+          }
+        }
+        executed = Math.min(9, executed + 1);
+        syncState();
+      }
+
+      document.querySelectorAll('.command').forEach(button => {
+        button.addEventListener('click', () => execute(button.dataset.command, button));
+      });
+
+      function resetLab() {
+        state = initialState(); executed = 0;
+        document.querySelectorAll('.command').forEach(el => el.classList.remove('is-last'));
+        Object.values(outputs).forEach(el => el.classList.remove('changed'));
+        byId('labTitle').textContent = '尚未执行命令';
+        byId('historyLine').textContent = '等待命令...';
+        byId('drawShape').className = 'shape';
+        byId('drawMessage').textContent = 'Framebuffer 还没有收到绘制结果。';
+        syncState();
+      }
+      byId('resetLab').addEventListener('click', resetLab);
+      byId('runAll').addEventListener('click', async () => {
+        resetLab();
+        const buttons = [...document.querySelectorAll('.command')];
+        for (const button of buttons) {
+          execute(button.dataset.command, button);
+          await new Promise(resolve => setTimeout(resolve, 150));
+        }
+      });
+      syncState();
+
+      byId('drawObjects').addEventListener('click', () => {
+        const aBlend = byId('objectABlend').checked;
+        const bReset = byId('objectBReset').checked;
+        const leaked = aBlend && !bReset;
+        byId('previewA').className = `preview-inner circle${aBlend ? ' transparent' : ''}`;
+        byId('previewB').className = `preview-inner${leaked ? ' transparent' : ''}`;
+        byId('leakStatus').textContent = leaked
+          ? '状态泄漏：A 开启的 GL_BLEND 持续存在，B 没有关闭它，因此 B 也被当作混合对象绘制。'
+          : bReset
+            ? '状态边界清晰：B 绘制前显式关闭 GL_BLEND，因此 B 保持不透明。'
+            : 'A 没有开启 GL_BLEND，所以当前状态本来就是 Disabled，B 不受影响。';
+      });
+
+      document.querySelectorAll('.question').forEach(question => {
+        const answers = [...question.querySelectorAll('.answer')];
+        answers.forEach((answer, index) => answer.addEventListener('click', () => {
+          answers.forEach(item => item.classList.remove('correct', 'wrong'));
+          const correct = Number(question.dataset.correct);
+          answer.classList.add(index === correct ? 'correct' : 'wrong');
+          if (index !== correct) answers[correct].classList.add('correct');
+          question.querySelector('.feedback').textContent = index === correct
+            ? '正确。你是根据当前 Context 状态推导结果。'
+            : '再看绿色答案：关键是状态会持续，命令操作或消费当前状态。';
+        }));
+      });
+    })();
+  </script>
+</body>
+</html>

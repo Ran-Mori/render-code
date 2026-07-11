@@ -8,7 +8,7 @@
 | --- | --- |
 | [`1-create-a-window`](1-create-a-window/) | 初始化 GLFW，创建 OpenGL 上下文和窗口，并运行最小渲染循环 |
 | [`2-hello-window-clear`](2-hello-window-clear/) | 设置清屏颜色、处理键盘输入并观察渲染循环 |
-| [`3-hello-triangle`](3-hello-triangle/) | 通过 GLAD 加载 OpenGL 函数，使用即时模式绘制彩色三角形 |
+| [`3-hello-triangle`](3-hello-triangle/) | 使用 Shader、VAO、VBO 和 EBO，以两个三角形索引绘制矩形 |
 | [`4-circle`](4-circle/) | 使用多个三角形近似圆形和圆环 |
 | [`docs`](docs/) | 与示例代码对应的说明文档及相关主题资料 |
 
@@ -39,7 +39,7 @@ cmake --build build
 
 - [创建窗口与 OpenGL 上下文](docs/01-create-a-window.md)
 - [清屏、输入处理与渲染循环](docs/02-clear-window.md)
-- [GLAD、三角形与 Shader 基础](docs/03-draw-triangle.md)
+- [GLAD、Shader 与索引绘制](docs/03-draw-triangle.md)
 - [使用三角形近似圆形和圆环](docs/04-draw-circle-and-ring.md)
 - [Skia 概览](docs/skia-overview.md)
 - [FFmpeg 概览](docs/ffmpeg-overview.md)

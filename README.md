@@ -1,169 +1,45 @@
 # render-code
-a repo for storing the code when studying rendering.
 
-***
+`render-code` 是一个使用 C++、GLFW 和 OpenGL 编写的基础渲染示例集合。仓库中的四个独立项目按照“创建窗口 → 清理窗口 → 绘制三角形 → 用三角形组合图形”的顺序组织。
 
-## glfw
+## 项目结构
 
-### relation with opengl
+| 目录 | 内容 |
+| --- | --- |
+| [`1-create-a-window`](1-create-a-window/) | 初始化 GLFW，创建 OpenGL 上下文和窗口，并运行最小渲染循环 |
+| [`2-hello-window-clear`](2-hello-window-clear/) | 设置清屏颜色、处理键盘输入并观察渲染循环 |
+| [`3-hello-triangle`](3-hello-triangle/) | 通过 GLAD 加载 OpenGL 函数，使用即时模式绘制彩色三角形 |
+| [`4-circle`](4-circle/) | 使用多个三角形近似圆形和圆环 |
+| [`docs`](docs/) | 与示例代码对应的说明文档及相关主题资料 |
 
-1. OpenGL itself doesn't handle things like creating windows, handling user input (mouse, keyboard), or managing contexts across different platforms, but glfw does.
-2. glfw is a helper library that sits on top of OpenGL. It provides a simpler API for handling the tasks OpenGL doesn't directly address.
-3. GLFW provides the foundation and utilities for building your OpenGL application. It takes care of the lower-level details that differ between operating systems, allowing you to focus on the core graphics logic using OpenGL.
-4. glfw target does not depend on OpenGL, as GLFW loads any OpenGL, OpenGL ES or Vulkan libraries it needs at runtime.
+## 环境要求
 
-***
+- CMake 3.25 或更高版本
+- 支持 C++14 的编译器
+- GLFW 3.3 或更高版本
+- OpenGL
+- GLAD（已放在 `third_party/glad`，由 `3-hello-triangle` 和 `4-circle` 使用）
 
-## glad
+项目当前面向 macOS。示例 3 和示例 4 使用了旧式 OpenGL 即时模式，适合观察基本绘制流程，但不代表现代 OpenGL 的推荐实现方式。
 
-### what
+## 构建
 
-* Vulkan/GL/GLES/EGL/GLX/WGL Loader-Generator based on the official specifications for multiple languages.
+每个示例都是独立的 CMake 项目。以第一个项目为例：
 
-### why
-
-* question
-
-  > The OpenGL API itself is designed to be consistent across different systems. In theory, developers only need to care about the API functions and not the underlying implementation details. So why do I need glad to load functions?
-
-*  While the core OpenGL API defines a set of functions, not all functions are available on all systems. There are two main reasons for this
-
-  1. Newer versions of OpenGL introduce new functions. If you're targeting a wider range of systems with potentially older graphics cards, some functions you might want to use might not be supported everywhere.
-  2. Hardware vendors can create optional extensions to the core OpenGL functionality for specific features. These extensions also come with their own set of functions.
-
-### features
-
-1. GLAD helps you by dynamically checking which functions are actually available on the current system at runtime. This ensures your code doesn't try to use functions that aren't supported, preventing errors and crashes.
-2. It is a little similar to the androidx library.
-
-### example
-
-```c++
-#include <glad/glad.h>
-
-// ... other OpenGL code
-
-// Function to check if a specific OpenGL function is available
-bool isFunctionAvailable(const char* functionName) {
-  void* functionPointer = glad[functionName];
-  return functionPointer != NULL;
-}
-
-int main() {
-  // ... OpenGL initialization code
-
-  // Check if a specific function (e.g., glDrawElements) is available
-  if (isFunctionAvailable("glDrawElements")) {
-    // Use the glDrawElements function as usual
-    // ... your OpenGL drawing code
-  } else {
-    // Handle the case where the function is not supported
-    std::cout << "Error: glDrawElements function not available." << std::endl;
-    // Implement fallback logic or error handling here
-  }
-
-  // ... rest of your application code
-
-  return 0;
-}
+```bash
+cd 1-create-a-window
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+./build/1-create-a-window
 ```
 
-### add order
+其他项目可以用相同方式配置和构建。四个项目都会通过 CMake 自动查找 GLFW 和系统 OpenGL；示例 3、4 会直接编译仓库中自带的 GLAD 源码。
 
-* background
+## 文档
 
-  > It is required that `glad.h` must be included before `glfw.h`.
-  >
-  > Now I want to call `glClear()` function, it will be different over the including order.
-
-*  `glad.h` is included before `glfw.h`
-
-  ```c++
-  //glad.h
-  #ifdef __gl_h_
-  #error OpenGL header already included, remove this include, glad already provides it
-  #endif
-  #define __gl_h_ // __gl_h_ is defined by glad.h
-  
-  GLAPI PFNGLCLEARPROC glad_glClear;
-  #define glClear glad_glClear // this is function pointer of glClear
-  
-  //glad.c
-  #include <glad/glad.h>
-  static void load_GL_VERSION_1_0(GLADloadproc load) {
-    glad_glClear = (PFNGLCLEARPROC)load("glClear"); // glClear is loaded dynamicly
-  }
-  ```
-
-* only include `glfw.h`
-
-  ```c++
-  //glfw.h
-  #if !defined(__gl_h_)
-  	#if defined(__APPLE__)
-    #include <OpenGL/gl.h> // here <OpenGL/gl.h> is included
-  	#endif
-  #endif
-  
-  //gl.h
-  #ifndef __gl_h_
-  #define __gl_h_ // __gl_h_ is defined by glad.h
-  
-  extern void glClear (GLbitfield mask) OPENGL_DEPRECATED(10.0, 10.14);
-  ```
-
-***
-
-## skia
-
-### ref
-
-1. [深入理解Flutter的图形图像绘制原理——图形库skia剖析](https://juejin.cn/post/6914188284126035981)
-
-### what
-
-* It is an open source 2D graphics library which provides common APIs that work across a variety of hardware and software platforms. It serves as the graphics engine for Google Chrome and ChromeOS, Android, Flutter, and many other products.
-
-### features
-
-1. Skia offers multiple backends for rendering, and one of them is OpenGL. This allows Skia to leverage the power of OpenGL for hardware-accelerated rendering on platforms where it's available.
-
-2. Skia also has backends like Vulkan, Metal and its own software renderer.
-
-3. hierarchy
-
-   ```bash
-   # from top to down
-   mobile applications
-   Android app, Flutter app, iOS app
-   Skia, CoreAnimation
-   Vulkan, OpenGL, Metal
-   ARM cpu, Adreno gpu, ARM Mali gpu, iPhone gpu, iPhone ARM cpu
-
-### android
-
-* Skia is an external dependency of AOSP .
-
-***
-
-## ffmpeg
-
-### reference
-
-* [offical website](https://ffmpeg.org/)
-* [ffmpeg github](https://github.com/FFmpeg/FFmpeg)
-
-***
-
-## shader
-
-### vertex shaders
-
-1. It is uesed to perform geometric transformations. Specifically, they calculate how vertices (points that define 3D models) are transformed from the object's local coordinate space into clip space (which is later projected onto the 2D screen). This involves operations like:
-   - **Model transformation**: Converting local coordinates to world coordinates.
-   - **View transformation**: Adjusting for the camera’s perspective.
-   - **Projection transformation**: Converting 3D coordinates into 2D screen space (clip space).
-
-### fragment Shader
-
-1. It takes the interpolated output from the vertex shader (such as colors, texture coordinates, and normals) and applies operations like texturing, lighting, and shading to determine the final color of each pixel on the screen.
+- [创建窗口与 OpenGL 上下文](docs/01-create-a-window.md)
+- [清屏、输入处理与渲染循环](docs/02-clear-window.md)
+- [GLAD、三角形与 Shader 基础](docs/03-draw-triangle.md)
+- [使用三角形近似圆形和圆环](docs/04-draw-circle-and-ring.md)
+- [Skia 概览](docs/skia-overview.md)
+- [FFmpeg 概览](docs/ffmpeg-overview.md)
